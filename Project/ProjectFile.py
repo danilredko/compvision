@@ -14,13 +14,13 @@ def get_interest_points(img):
     sift = cv2.xfeatures2d.SIFT_create()
     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
     kp, des = sift.detectAndCompute(gray, None)
-    return cv2.drawKeypoints(gray, kp, img1, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS), kp, des
+    return  kp, des
 
 
 def my_matching(img1, img2):
     
-    _, kp1, des1 = get_interest_points(img1)
-    _, kp2, des2 = get_interest_points(img2)
+    kp1, des1 = get_interest_points(img1)
+    kp2, des2 = get_interest_points(img2)
     match = []
     kp_diff = []
 
@@ -198,7 +198,7 @@ def RANSAC(matches):
 
     return best_H, best_inliers
 
-
+'''
 matches, points1, points2 = matching(cover, test)
 
 h, _ = cv2.findHomography(points1, points2, cv2.RANSAC)
@@ -210,6 +210,7 @@ transform_image(cover, test, h)
 
 
 
+'''
 
 
 
