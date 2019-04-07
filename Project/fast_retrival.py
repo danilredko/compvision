@@ -1,11 +1,4 @@
 
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2
-from scipy.spatial.distance import euclidean as euc
-import random
-from numpy.linalg import eig, svd, norm
-
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -53,9 +46,20 @@ class Node(object):
         self.children.append(obj)
 
 
-def tree_count(tree):
+def count_nodes(tree):
 
     counter = 0
+
+    if len(tree.children) != 0:
+
+        for child in tree.children:
+
+            counter = counter + count_nodes(child) + 1
+
+    return counter
+
+def print_tree(tree):
+
     if tree.children!=[]:
 
         print('HEAD:'+str(tree.data))
@@ -65,17 +69,15 @@ def tree_count(tree):
 
         print('********************')
 
-        counter += len(tree.children)
-
         for child in tree.children:
-            counter += tree_count(child)
+            print_tree(child)
     else:
 
         print('HEAD:'+str(tree.data))
-    return counter
+        print('*********************')
 
 
-def construct2d_tree(cluster, number_of_clusters, center, depth):
+def construct_vocab_tree_helper(cluster, number_of_clusters, center,  model, max_depth, depth):
 
     tree = Node(center)
     data = Node(cluster)
@@ -90,61 +92,95 @@ def construct2d_tree(cluster, number_of_clusters, center, depth):
 
             new_cluster = cluster[np.where(labels == i, True, False)]
 
-            child, data_child = construct2d_tree(new_cluster, number_of_clusters, centers[i], depth+1)
+            child, data_child = construct_vocab_tree_helper(new_cluster, number_of_clusters, centers[i],  model, max_depth, depth+1)
 
             tree.add_child(child)
             data.add_child(data_child)
 
     return tree, data
 
-X, y = make_blobs(n_samples=10000, centers=1, n_features=2)
-model1 = MiniBatchKMeans(n_clusters=1)
-model1.fit(X)
-first_center = model1.cluster_centers_
 
-max_depth = 3
-model = MiniBatchKMeans(n_clusters=3, max_iter=100)
-tree_k, data_k = construct2d_tree(X, 3,  first_center, depth=0)
-k = tree_count(tree_k)
+def vocab_tree(directory, branch_factor, max_depth):
 
-print(k)
+    features = get_all_features(directory)
 
+    model1 = MiniBatchKMeans(n_clusters=1)
+    model1.fit(features)
+    first_center = model1.cluster_centers_
 
-def my_plot(tree, data, max_depth):
+    model = MiniBatchKMeans(n_clusters=branch_factor)
+    tree, data = construct_vocab_tree_helper(features, branch_factor, first_center, model, max_depth, 0)
 
-    #Plot the data first
-
-    layers_tree = []
-    layers_data = []
-    layers_data.append(data.children)
-    layers_tree.append(tree.children)
-
-    for j in range(max_depth):
-
-        layer_tree_item = np.array([layers_tree[j][i].children for i in range(len(layers_tree[j]))]).flatten()
-        layers_tree.append(layer_tree_item)
-        layer_data_item = np.array([layers_data[j][i].children for i in range(len(layers_data[j]))]).flatten()
-        layers_data.append(layer_data_item)
-
-    plt.subplot(2, 2, 1)
-    plt.scatter(data.data[:, [0]], data.data[:, [1]])
-    plt.scatter(tree.data[0][0], tree.data[0][1], marker='^', color='black')
-    plt.title('Iteration: 0')
-
-    for num_layers in range(max_depth):
-
-        plt.subplot(2, 2, num_layers+2)
-
-        for data_item, tree_item in zip(layers_data[num_layers], layers_tree[num_layers]):
-            plt.title('Iteration: {}'.format(num_layers+1))
-            plt.scatter(data_item.data[:, [0]], data_item.data[:, [1]])
-            plt.scatter(tree_item.data[0], tree_item.data[1], marker='^', color='black')
-    plt.suptitle('K-Means for 2D')
-    plt.show()
+    return tree, data
 
 
-my_plot(tree_k, data_k, max_depth)
 
-#features = get_all_features('data/DVDcovers')
+def find_leaf(tree, desc):
 
-#build_vocabulary_tree(features, 5, 3, 7)
+    if len(tree.children)==0:
+
+        return tree.data
+    values = []
+    for child in tree.children:
+        score = euc(child.data, desc)
+        values.append(score)
+    ind_min = np.argmin(values)
+    return find_leaf(tree.children[ind_min], desc)
+
+
+def get_all_leaves(tree):
+
+    if len(tree.children)==0:
+        return tree.data
+
+    leaves = []
+
+    for child in tree.children:
+
+        leaves.append(get_all_leaves(child))
+
+    return np.array(leaves).flatten()
+
+
+def create_inverted_index(directory, tree):
+
+    table_of_words = get_all_leaves(tree)
+
+    print(table_of_words)
+
+    file_names_list = [[]] * table_of_words.shape[0]
+
+    f_list = os.listdir(directory)
+
+    for file_name in f_list:
+
+        if not file_name.startswith('.') and not file_name.endswith('.gif'):
+            image = cv2.imread('data/DVDcovers/'+str(file_name))[:, :, ::-1]
+
+            sift = cv2.xfeatures2d.SIFT_create(nfeatures=500)
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            _, descriptors = sift.detectAndCompute(gray, None)
+
+            for desc in descriptors:
+
+                word = find_leaf(tree, desc)
+
+                ind_find = np.where(np.all(table_of_words==word,axis=1))[0][0]
+
+                if len(file_names_list[ind_find])==0:
+
+                    file_names_list[ind_find] = [file_name]
+                else:
+
+                    file_names_list[ind_find].append(file_name)
+
+    return table_of_words, file_names_list
+
+
+tree, data = vocab_tree('data/DVDcovers/', 4, 5)
+
+print(count_nodes(tree))
+
+tablewords, filenamelist = create_inverted_index('data/DVDcovers', tree)
+
+print(tablewords, filenamelist)
