@@ -134,21 +134,33 @@ tree = Node(19)
 c1 = Node(15)
 c2 = Node(12)
 c3 = Node(16)
+c4 = Node(76)
 tree.add_child(c1)
 tree.add_child(c2)
 tree.add_child(c3)
+tree.add_child(c4)
 
 c1.add_child(Node(10))
 c1.add_child(Node(8))
 c1.add_child(Node(7))
+c1.add_child(Node(4))
 
 c2.add_child(Node(6))
 c2.add_child(Node(5))
 c2.add_child(Node(2))
+c2.add_child(Node(32))
+
 
 c3.add_child(Node(7))
 c3.add_child(Node(9))
 c3.add_child(Node(1))
+c3.add_child(Node(34))
+
+c4.add_child(Node(1))
+c4.add_child(Node(54))
+c4.add_child(Node(66))
+c4.add_child(Node(65))
+
 
 
 def find_leaf(tree, desc):
@@ -178,52 +190,40 @@ def get_all_leaves(tree):
     return np.array(leaves).flatten()
 
 
+
+
 table = get_all_leaves(tree)
 
 f = 'kekos'
 l = 'asdfas'
-d = np.array([1,4,5,6])
+d = np.array([1, 4, 12, 1])
 
-
+print(table.reshape(4, 4))
 
 table = np.array([[1,4,5,6], [1,4,12,1], [1234,2,1,4]])
 
-print(table)
 
 zeros = [[]] * table.shape[0]
 
-print(zeros)
 
-print(table[[1],:][0])
+def add_word(word, table, f):
 
+    ind_find = np.where(np.all(table==word,axis=1))[0][0]
 
-ind_find = np.where(np.all(table==d,axis=1))[0][0]
+    if zeros[ind_find]==[]:
 
-if zeros[ind_find]==[]:
+        zeros[ind_find] = [f]
+    else:
+        #if f not in zeros[ind_find]:
+            zeros[ind_find].append(f)
 
-    zeros[ind_find] = [f]
-else:
+    return zeros
 
-    zeros[ind_find].append(f)
+k  = add_word([1,4,5,6],table, 'fasdfadf')
 
-print(zeros)
+k = add_word([1,4,5,6], table,'fasdfadf' )
 
-
-
-
-ind_find = np.where(np.all(table==d,axis=1))[0][0]
-
-if zeros[ind_find]==[]:
-
-    zeros[ind_find] = [l]
-else:
-
-    zeros[ind_find].append(l)
-
-print(zeros)
-
-
-
+print(k)
 
 
 
