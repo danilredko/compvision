@@ -4,17 +4,18 @@ import matplotlib.pyplot as plt
 import cv2
 from scipy.spatial.distance import euclidean as euc
 import random
-from numpy.linalg import eig, svd, norm
+from numpy.linalg import eig, norm
 
-cover = cv2.imread('data/DVDcovers/matrix.jpg')[:,:,::-1]
-test = cv2.imread('data/test/image_07.jpeg')[:,:,::-1]
+cover = cv2.imread('data/DVDcovers/matrix.jpg')[:, :, ::-1]
+test = cv2.imread('data/test/image_07.jpeg')[:, :, ::-1]
+
 
 def get_interest_points(img):
-    img1 = img.copy()
+
     sift = cv2.xfeatures2d.SIFT_create()
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     kp, des = sift.detectAndCompute(gray, None)
-    return  kp, des
+    return kp, des
 
 
 def my_matching(img1, img2):
@@ -156,11 +157,8 @@ def transform_image(img1, img2, H):
     p2 = match_point_homography(0.0, img1x, H)
     p3 = match_point_homography(img1y, 0.0, H)
     p4 = match_point_homography(img1y, img1x, H)
-
-    #f = plt.figure(figsize=(20,20))
     plt.imshow(img2)
-
-    plot_rect(p1,p2,p3,p4, 'r')
+    plot_rect(p1, p2, p3, p4, 'r')
     plt.show()
 
 
@@ -198,7 +196,7 @@ def RANSAC(matches):
 
     return best_H, best_inliers
 
-'''
+
 matches, points1, points2 = matching(cover, test)
 
 h, _ = cv2.findHomography(points1, points2, cv2.RANSAC)
@@ -208,9 +206,6 @@ myH, number_of_inliers = RANSAC(matches)
 transform_image(cover, test, myH)
 transform_image(cover, test, h)
 
-
-
-'''
 
 
 
