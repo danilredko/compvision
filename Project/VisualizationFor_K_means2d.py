@@ -119,16 +119,14 @@ def main():
     layers_data.append(data_k.children)
     layers_tree.append(tree_k.children)
 
-
-
     number_of_nodes = count_nodes(tree_k)
     print_tree(tree_k)
     print('Tree has {} nodes'.format(number_of_nodes))
     my_plot(tree_k, data_k, max_depth, branch_factor)
 
-#main()
+main()
 
-
+'''
 tree = Node(19)
 
 c1 = Node(15)
@@ -231,3 +229,4 @@ print(k)
 
 
 #print('LEAF :{}'.format(find_leaf(tree, 2)))
+'''
