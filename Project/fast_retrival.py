@@ -12,6 +12,8 @@ import os
 
 def get_all_features(directory):
 
+    print('GETTING THE FEATURES')
+
     '''
 
     Get all the features of the training images from our data using SIFT.
@@ -28,11 +30,13 @@ def get_all_features(directory):
 
             image = cv2.imread('data/DVDcovers/'+str(file))[:, :, ::-1]
 
-            sift = cv2.xfeatures2d.SIFT_create(nfeatures=100)
+            sift = cv2.xfeatures2d.SIFT_create(nfeatures=1000)
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             _, descriptors = sift.detectAndCompute(gray, None)
 
             all_features = np.concatenate((all_features, descriptors), axis=0)
+
+    print('DONE GETTING FEATURES')
 
     return np.array(all_features)
 
@@ -102,6 +106,8 @@ def construct_vocab_tree_helper(cluster, number_of_clusters, center,  model, max
 
 def vocab_tree(directory, branch_factor, max_depth):
 
+    print('CONSTRUCTING VOCAB TREE')
+
     features = get_all_features(directory)
 
     model1 = MiniBatchKMeans(n_clusters=1)
@@ -143,6 +149,8 @@ def get_all_leaves(tree):
 
 def create_inverted_index(directory, tree, branch_factor):
 
+    print('CREATING INVERTED INDEX FILE')
+
     table_of_words = get_all_leaves(tree)
 
     table_of_words = table_of_words.reshape(table_of_words.shape[0]/128, 128)
@@ -156,9 +164,10 @@ def create_inverted_index(directory, tree, branch_factor):
     for file_name in f_list:
 
         if not file_name.startswith('.') and not file_name.endswith('.gif'):
+
             image = cv2.imread('data/DVDcovers/'+str(file_name))[:, :, ::-1]
 
-            sift = cv2.xfeatures2d.SIFT_create(nfeatures=100)
+            sift = cv2.xfeatures2d.SIFT_create(nfeatures=1000)
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             _, descriptors = sift.detectAndCompute(gray, None)
 
@@ -179,15 +188,13 @@ def create_inverted_index(directory, tree, branch_factor):
 
                         file_names_list[ind_find].append(file_name)
 
+    print('DONE CREATING INDEX FILE')
     return table_of_words, file_names_list
 
 
-tree, data = vocab_tree('data/DVDcovers/', 5 , 3)
-
-tablewords, filenamelist = create_inverted_index('data/DVDcovers', tree, 3)
-
-
 def get_frequency_of_words(file_name_list, directory):
+
+    print('GETTING FREQUENCIES OF WORDS')
 
     f_list = os.listdir(directory)
 
@@ -208,19 +215,20 @@ def get_frequency_of_words(file_name_list, directory):
     return np.array(images_frequency)
 
 
-frequencies = get_frequency_of_words(filenamelist, 'data/DVDcovers')
-
-
 def get_hist_test_image(file_name, tree, table_of_words, list_of_files_names):
+
+    print('GETTING HISTOGRAM OF TEST IMAGE')
 
     image = cv2.imread('data/test/'+str(file_name))[:, :, ::-1]
 
-    sift = cv2.xfeatures2d.SIFT_create(nfeatures=100)
+    sift = cv2.xfeatures2d.SIFT_create(nfeatures=1000)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     _, descriptors = sift.detectAndCompute(gray, None)
     possible_images = []
 
-    for desc in descriptors[0:1]:
+    freq_word = [0] * table_of_words.shape[0]
+
+    for desc in descriptors:
 
         word = find_leaf(tree, desc)
 
@@ -228,25 +236,73 @@ def get_hist_test_image(file_name, tree, table_of_words, list_of_files_names):
 
         k = list_of_files_names[ind_find]
 
-        print(k)
-
-        print(np.unique(k).shape)
+        freq_word[ind_find] = freq_word[ind_find] + 1
 
         possible_images.append(k)
 
     #possible_images = np.array(possible_images)
 
-    return possible_images
+    #return np.array(possible_images)
+    return possible_images, np.array(freq_word)
+
+branch_factor = 11
+max_depth = 3
+
+tree, data = vocab_tree('data/DVDcovers', branch_factor, max_depth)
+
+tablewords, filenamelist = create_inverted_index('data/DVDcovers', tree, branch_factor)
+
+frequencies = get_frequency_of_words(filenamelist, 'data/DVDcovers')
 
 
-kek = get_hist_test_image('image_01.jpeg', tree, tablewords, filenamelist)
+pi, freq_w = get_hist_test_image('image_01.jpeg', tree, tablewords, filenamelist)
+
+N = len(os.listdir('data/DVDcovers'))  # Number of documents
+#n_i = np.sum(frequencies, axis=0)   # Number of times word i appears
+
+n_i = []
+for item in pi:
+    n_i.append(len(item))
+
+n_i = np.array(n_i)
+
+n_d = np.sum(freq_w)  # total number of words in the image
+ # the number each word appears
+
+
+def tf_idf(N, n_i, n_d, n_id):
+
+    print(N)
+    print(n_i.shape)
+    print(n_d)
+    print(n_id.shape)
+
+    return np.dot(np.divide(n_id, n_d), np.log(np.divide(N, n_i)))
+
+
+print(tf_idf(N, n_i, n_d, freq_w))
+
+
 '''
-uniques_elements = []
+norms = []
+for item in frequencies:
 
-for item in kek:
+    s = np.divide(np.dot(item, freq_w), (np.linalg.norm(item) * np.linalg.norm(freq_w)))
+    norms.append(s)
 
-    uniques_elements.append(item)
 
-print(np.unique(uniques_elements))
+ind_min = np.argmax(norms)
+
+
+h = os.listdir('data/DVDcovers')[ind_min]
+
+
+print(h)
+
+
+
+for item in kek.flatten():
+
+    print(np.unique(item))
 
 '''
