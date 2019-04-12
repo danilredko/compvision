@@ -155,6 +155,8 @@ def create_inverted_index(directory, tree, branch_factor):
 
     table_of_words = table_of_words.reshape(table_of_words.shape[0]/128, 128)
 
+    print('Number of leaves: ' + str(table_of_words.shape[0]))
+
     # CHECK LATER
 
     file_names_list = [[]] * table_of_words.shape[0]
@@ -184,7 +186,7 @@ def create_inverted_index(directory, tree, branch_factor):
 
                 else:
                     # File name is not added to the list if it's already in the list
-                    #if file_name not in file_names_list[ind_find]:
+                    if file_name not in file_names_list[ind_find]:
 
                         file_names_list[ind_find].append(file_name)
 
@@ -208,12 +210,20 @@ def get_frequency_of_words(file_name_list, directory):
 
             for word in file_name_list:
                 number_times_word_i = word.count(file_name)
+
                 image_i_frequency.append(number_times_word_i)
 
             images_frequency.append(np.array(image_i_frequency))
 
     return np.array(images_frequency)
 
+
+def get_n_i(filenamelists):
+
+    n_i = []
+    for item in filenamelist:
+        n_i.append(len(item))
+    return np.array(n_i)
 
 def get_hist_test_image(file_name, tree, table_of_words, list_of_files_names):
 
@@ -245,7 +255,7 @@ def get_hist_test_image(file_name, tree, table_of_words, list_of_files_names):
     #return np.array(possible_images)
     return possible_images, np.array(freq_word)
 
-branch_factor = 11
+branch_factor = 10
 max_depth = 3
 
 tree, data = vocab_tree('data/DVDcovers', branch_factor, max_depth)
@@ -254,55 +264,42 @@ tablewords, filenamelist = create_inverted_index('data/DVDcovers', tree, branch_
 
 frequencies = get_frequency_of_words(filenamelist, 'data/DVDcovers')
 
-
-pi, freq_w = get_hist_test_image('image_01.jpeg', tree, tablewords, filenamelist)
+pi, freq_w = get_hist_test_image('image_07.jpeg', tree, tablewords, filenamelist)
 
 N = len(os.listdir('data/DVDcovers'))  # Number of documents
-#n_i = np.sum(frequencies, axis=0)   # Number of times word i appears
 
-n_i = []
-for item in pi:
-    n_i.append(len(item))
-
-n_i = np.array(n_i)
+n_i = get_n_i(filenamelist)
 
 n_d = np.sum(freq_w)  # total number of words in the image
- # the number each word appears
 
 
 def tf_idf(N, n_i, n_d, n_id):
 
-    print(N)
-    print(n_i.shape)
-    print(n_d)
-    print(n_id.shape)
+    return np.true_divide(n_id, n_d) * np.log(np.true_divide(N, n_i))
 
-    return np.dot(np.divide(n_id, n_d), np.log(np.divide(N, n_i)))
+t_test_image = tf_idf(N, n_i, n_d, freq_w)
 
 
-print(tf_idf(N, n_i, n_d, freq_w))
-
-
-'''
 norms = []
+
 for item in frequencies:
 
-    s = np.divide(np.dot(item, freq_w), (np.linalg.norm(item) * np.linalg.norm(freq_w)))
-    norms.append(s)
+    n_id = item
 
+    n_d = np.sum(n_i)
 
-ind_min = np.argmax(norms)
+    train_image = tf_idf(N, n_i, n_d, n_id)
 
+    norm = np.dot(train_image, t_test_image) / (np.linalg.norm(train_image) * np.linalg.norm(t_test_image))
 
-h = os.listdir('data/DVDcovers')[ind_min]
+    norms.append(norm)
 
+norms = np.array(norms)
 
-print(h)
+top_index = norms.argsort()[-10:][::-1]
 
+h = os.listdir('data/DVDcovers')
 
+for i in top_index:
+    print(h[i])
 
-for item in kek.flatten():
-
-    print(np.unique(item))
-
-'''
