@@ -1,6 +1,7 @@
 
 
 import numpy as np
+
 import matplotlib.pyplot as plt
 import cv2
 from scipy.spatial.distance import euclidean as euc
@@ -11,6 +12,12 @@ from sklearn.datasets.samples_generator import make_blobs
 import os
 import copy
 
+
+invert_table = {}
+query_table = {}
+words = {}
+
+counter_words = 0
 def get_descriptors(image, n_features):
 
     sift = cv2.xfeatures2d.SIFT_create(nfeatures=n_features)
@@ -42,12 +49,11 @@ def get_all_features(directory):
 
             image = cv2.imread(directory+str(file))[:, :, ::-1]
 
-            descriptors = get_descriptors(image, 250)
+            descriptors = get_descriptors(image, num_of_features)
 
             file_dictionary[file] = descriptors
 
             all_features = np.concatenate((all_features, descriptors), axis=0)
-            #all_features.append(descriptors)
 
     print('DONE GETTING FEATURES')
 
@@ -74,6 +80,12 @@ def count_nodes(tree):
             counter = counter + count_nodes(child) + 1
 
     return counter
+
+
+def count_leaves(dict):
+
+    return len(dict.keys())
+
 
 def print_tree(tree):
 
@@ -117,6 +129,22 @@ def construct_vocab_tree_helper(cluster, number_of_clusters, center,  model, max
     return tree, data
 
 
+def get_words_dict(tree):
+
+    global words
+    global counter_words
+
+    if len(tree.children) == 0:
+        words['word'+str(counter_words)] = list(tree.data)
+        invert_table['word'+str(counter_words)] = {}
+        #query_table['word'+str(counter_words)] = {}
+        counter_words += 1
+
+    for child in tree.children:
+
+        get_words_dict(child)
+
+
 def vocab_tree(features, directory, branch_factor, max_depth):
 
     print('CONSTRUCTING VOCAB TREE')
@@ -151,7 +179,7 @@ def match_descriptor_query(image, tree):
 
     # Returns a dictionary where key is the visual word, and the value is 1 every time a word is added
 
-    descriptors = get_descriptors(image, 250)
+    descriptors = get_descriptors(image, num_of_features)
 
     for desc in descriptors:
 
@@ -170,48 +198,65 @@ def match_descriptor_query(image, tree):
     return dict_of_words
 
 
-def build_inverted_index(descriptors, vocab_tree, file_dictionary):
+def build_inverted_index(file_name, tree):
 
-    print('BUILDING INVERTED INDEX FILE')
+    global invert_table
 
-    invert_table = {}
+    descriptors = get_descriptors(cv2.imread(directory + file_name), num_of_features)
 
-    for file_name in file_dictionary.keys():
+    for desc in descriptors:
 
-        for desc in file_dictionary[file_name]:
+        word = find_leaf(tree, desc)
 
-            word = find_leaf(vocab_tree, desc)
+        word_name = words.keys()[words.values().index(list(word))]
 
-            if np.str(word) in invert_table.keys():
+        if file_name in invert_table[word_name]:
 
-                invert_table[np.str(word)].append(file_name)
+            invert_table[word_name][file_name] += 1
 
-            else:
+        else:
 
-                invert_table[np.str(word)] = []
+            invert_table[word_name][file_name] = 1
 
     print('DONE BUILDING INVERTED INDEX FILE')
-    return invert_table
+
+
+def build_inverted_index_query(file_name, tree):
+
+    global query_table
+
+    descriptors = get_descriptors(cv2.imread(file_name), num_of_features)
+
+    for desc in descriptors:
+
+        word = find_leaf(tree, desc)
+
+        word_name = words.keys()[words.values().index(list(word))]
+
+        if word_name not in query_table.keys():
+            query_table[word_name] = {}
+
+        if file_name in query_table[word_name]:
+
+            query_table[word_name][file_name] += 1
+
+        else:
+
+            query_table[word_name][file_name] = 1
+
+    print('DONE BUILDING INVERTED INDEX FILE QUERY')
 
 
 def dict_print(dict, unique=False):
 
     for item in dict.keys():
+        print('KEY: '+str(item))
         if unique:
             print(np.unique(dict[item]))
         else:
             print(dict[item])
 
 '''
-def get_the_dictionary_of_words(dict):
-
-    for item in dict.keys():
-
-        dict[item] = []
-
-    return dict
-'''
-
 def get_list_of_possible_images(inv, words):
 
     possible_images = []
@@ -227,24 +272,57 @@ def get_list_of_possible_images(inv, words):
                 possible_images.append(file_name)
 
     return possible_images
+'''
+
+def weight(word):
+
+    return np.log(N / len(invert_table[word]))
 
 directory = 'data/DVDCovers/'
-branch = 2
-max_depth = 6
+branch = 4
+max_depth = 5
+
+num_of_features = 500
+N = len(os.listdir(directory))
 
 D, file_dic = get_all_features(directory)  # is the set of all descriptors
 
 tree, _ = vocab_tree(D, directory, branch, max_depth)
 
+get_words_dict(tree)
+
+number_of_words = len(words.keys())
+
+print(number_of_words)
+
 test_image = cv2.imread('data/test/image_01.jpeg')[:, :, ::-1]
 
-inv = build_inverted_index(D, tree, file_dic)
+build_inverted_index('shrek2.jpg', tree)
+build_inverted_index('matrix.jpg', tree)
+build_inverted_index('tarzan.jpg', tree)
+build_inverted_index('the_terminal.jpg', tree)
 
-query_image_matched = match_descriptor_query(test_image, tree)
+build_inverted_index_query('data/test/image_01.jpeg', tree)
 
-pos_im = get_list_of_possible_images(inv, query_image_matched)
+words_found_query = len(query_table.keys())
 
-print(dict_print(inv, unique=True))
+print('Query words found:{}'.format(words_found_query))
+
+print(count_leaves(invert_table))
 
 
-print(len(pos_im))
+def get_list_of_possible_images(query_table, invert_table):
+
+    possible_images = []
+
+    for word in query_table.keys():
+
+        for image in invert_table[word].keys():
+
+            if image not in possible_images:
+                possible_images.append(image)
+
+    return possible_images
+
+
+

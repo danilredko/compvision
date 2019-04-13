@@ -1,12 +1,4 @@
 
-
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2
-from scipy.spatial.distance import euclidean as euc
-import random
-from numpy.linalg import eig, norm
-
 from Homography import *
 
 
@@ -58,6 +50,7 @@ def run(names_of_best_images, name_of_test_image):
     dictH, dict_inliers = compute_H_for_best10(names_of_best_images, name_of_test_image)
 
     find_best_image(dictH, dict_inliers, name_of_test_image)
+
 
 best_images = ['matrix.jpg', 'shall_we_dance.jpg' ,'shrek2.jpg', 'shrek_the_musical.jpg',
  'silver_linings_playbook.jpg' ,'six_days_seven_nights.jpg', 'slap_shot.jpg',
