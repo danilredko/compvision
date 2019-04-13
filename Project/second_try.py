@@ -274,55 +274,138 @@ def get_list_of_possible_images(inv, words):
     return possible_images
 '''
 
+
 def weight(word):
 
-    return np.log(N / len(invert_table[word]))
+    n_i = len(invert_table[word])
+
+    if n_i == 0:
+        print('ERROR')
+        return 0
+
+    return np.log(np.true_divide(N, n_i))
+
+
+def get_word_frequency(word, image, query=False):
+
+    if query:
+
+        dic = query_table
+    else:
+
+        dic = invert_table
+
+    print(dic)
+    n_id = dic[word][image]
+
+    n_d = 0 # total number of words in the image
+
+    for word in dic.values():
+        print(word[image])
+
+        n_d += word[image]
+
+    if n_d==0:
+
+        print('Error')
+
+    return np.true_divide(n_id, n_d)
+
+
+def tf_idf(image, query):
+
+    t_i = []
+
+    for word in words.keys():
+
+        inverse_document_freq = weight(word)
+        freq_w = get_word_frequency(word, image, query)
+
+        t_i.append(inverse_document_freq * freq_w)
+
+    return np.array(t_i)
+
+
+def build_inv_file(directory, tree):
+
+    f_list = os.listdir(directory)
+
+    for file_name in f_list:
+
+        if not file_name.startswith('.') and not file_name.endswith('.gif'):
+
+            print(file_name)
+
+            build_inverted_index(file_name, tree)
+
+
+'''
+words_found_query = len(query_table.keys())
+
+print('Query words found:{}'.format(words_found_query))
+
+print('Number of leaves:' +str(count_leaves(invert_table)))
+'''
+
+
+def compute_tf_idf(directory):
+
+    dict_of_tf_idf = {}
+
+    f_list = os.listdir(directory)
+
+    for file_name in f_list:
+
+        if not file_name.startswith('.') and not file_name.endswith('.gif'):
+
+            dict_of_tf_idf[file_name] = list(tf_idf(file_name, False))
+
+    return dict_of_tf_idf
+
+
+def get_best_match(dict, top_k, query_tf_idf_score):
+
+    score = {}
+
+    best_k_images = []
+
+    for item in dict.values():
+
+        s = np.dot(item, query_tf_idf_score) / (np.linalg.norm(item) * np.linalg.norm(query_tf_idf_score))
+
+        score[s] = dict.keys()[dict.values().index(list(item))]
+
+    top_scores = sorted(score.keys())[-top_k:]
+
+    for value in top_scores:
+
+        best_k_images.append(score[value])
+
+    print(score)
+
+    return best_k_images
 
 directory = 'data/DVDCovers/'
-branch = 4
-max_depth = 5
+branch = 3
+max_depth = 3
 
 num_of_features = 500
 N = len(os.listdir(directory))
 
 D, file_dic = get_all_features(directory)  # is the set of all descriptors
-
 tree, _ = vocab_tree(D, directory, branch, max_depth)
 
 get_words_dict(tree)
+build_inv_file(directory, tree)
 
-number_of_words = len(words.keys())
+#build_inverted_index_query('data/test/image_07.jpeg', tree)
+d_td = compute_tf_idf(directory)
+#f = tf_idf('data/test/image_07.jpeg', True)
 
-print(number_of_words)
+#top_k_images = get_best_match(d_td, 10, f)
 
-test_image = cv2.imread('data/test/image_01.jpeg')[:, :, ::-1]
+#print(top_k_images)
 
-build_inverted_index('shrek2.jpg', tree)
-build_inverted_index('matrix.jpg', tree)
-build_inverted_index('tarzan.jpg', tree)
-build_inverted_index('the_terminal.jpg', tree)
-
-build_inverted_index_query('data/test/image_01.jpeg', tree)
-
-words_found_query = len(query_table.keys())
-
-print('Query words found:{}'.format(words_found_query))
-
-print(count_leaves(invert_table))
-
-
-def get_list_of_possible_images(query_table, invert_table):
-
-    possible_images = []
-
-    for word in query_table.keys():
-
-        for image in invert_table[word].keys():
-
-            if image not in possible_images:
-                possible_images.append(image)
-
-    return possible_images
 
 
 
