@@ -218,8 +218,6 @@ def build_inverted_index(file_name, tree):
 
             invert_table[word_name][file_name] = 1
 
-    print('DONE BUILDING INVERTED INDEX FILE')
-
 
 def build_inverted_index_query(file_name, tree):
 
@@ -288,22 +286,53 @@ def weight(word):
 
 def get_word_frequency(word, image, query=False):
 
-    if query:
 
-        dic = query_table
+
+    dic = invert_table
+
+    if image in dic[word].keys():
+
+        n_id = dic[word][image]
+
     else:
 
-        dic = invert_table
-
-    print(dic)
-    n_id = dic[word][image]
+        n_id = 0
 
     n_d = 0 # total number of words in the image
 
-    for word in dic.values():
-        print(word[image])
+    for item in dic.values():
 
-        n_d += word[image]
+        if image not in item.keys():
+
+           n_d += 0
+
+        else:
+
+            n_d += item[image]
+
+    if n_d==0:
+
+        print('Error')
+
+    return np.true_divide(n_id, n_d)
+
+
+
+def get_word_frequency_query(word, image):
+
+    n_id = query_table[word][image]
+
+    n_d = 0 # total number of words in the image
+
+    for item in query_table.values():
+
+        if image not in item.keys():
+
+           n_d += 0
+
+        else:
+
+            n_d += item[image]
 
     if n_d==0:
 
@@ -319,7 +348,14 @@ def tf_idf(image, query):
     for word in words.keys():
 
         inverse_document_freq = weight(word)
-        freq_w = get_word_frequency(word, image, query)
+        if query:
+
+            if word not in query_table.keys():
+                freq_w = 0
+            else:
+                freq_w = get_word_frequency_query(word, image)
+        else:
+            freq_w = get_word_frequency(word, image)
 
         t_i.append(inverse_document_freq * freq_w)
 
@@ -327,6 +363,8 @@ def tf_idf(image, query):
 
 
 def build_inv_file(directory, tree):
+
+    print("STARTING BUILDING INVERTED INDEX FILE")
 
     f_list = os.listdir(directory)
 
@@ -337,15 +375,7 @@ def build_inv_file(directory, tree):
             print(file_name)
 
             build_inverted_index(file_name, tree)
-
-
-'''
-words_found_query = len(query_table.keys())
-
-print('Query words found:{}'.format(words_found_query))
-
-print('Number of leaves:' +str(count_leaves(invert_table)))
-'''
+    print('END BUILDING INVERTED INDEX FILE')
 
 
 def compute_tf_idf(directory):
@@ -387,7 +417,7 @@ def get_best_match(dict, top_k, query_tf_idf_score):
 
 directory = 'data/DVDCovers/'
 branch = 3
-max_depth = 3
+max_depth = 4
 
 num_of_features = 500
 N = len(os.listdir(directory))
@@ -398,13 +428,13 @@ tree, _ = vocab_tree(D, directory, branch, max_depth)
 get_words_dict(tree)
 build_inv_file(directory, tree)
 
-#build_inverted_index_query('data/test/image_07.jpeg', tree)
+build_inverted_index_query('data/test/image_07.jpeg', tree)
 d_td = compute_tf_idf(directory)
-#f = tf_idf('data/test/image_07.jpeg', True)
+f = tf_idf('data/test/image_07.jpeg', True)
 
-#top_k_images = get_best_match(d_td, 10, f)
+top_k_images = get_best_match(d_td, 10, f)
 
-#print(top_k_images)
+print(top_k_images)
 
 
 
