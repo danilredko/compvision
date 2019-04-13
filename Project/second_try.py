@@ -9,7 +9,7 @@ from numpy.linalg import eig, svd, norm
 from sklearn.cluster import KMeans, MiniBatchKMeans
 from sklearn.datasets.samples_generator import make_blobs
 import os
-
+import copy
 
 def get_descriptors(image, n_features):
 
@@ -40,7 +40,7 @@ def get_all_features(directory):
 
         if not file.startswith('.') and not file.endswith('.gif'):
 
-            image = cv2.imread('data/DVDcovers/'+str(file))[:, :, ::-1]
+            image = cv2.imread(directory+str(file))[:, :, ::-1]
 
             descriptors = get_descriptors(image, 250)
 
@@ -143,7 +143,11 @@ def find_leaf(tree, desc):
     return find_leaf(tree.children[ind_min], desc)
 
 
-def match_descriptor_query(image, tree, dict_of_words):
+def match_descriptor_query(image, tree):
+
+    print('START MATCHING THE QUERY IMAGE')
+
+    dict_of_words = {}
 
     # Returns a dictionary where key is the visual word, and the value is 1 every time a word is added
 
@@ -153,12 +157,22 @@ def match_descriptor_query(image, tree, dict_of_words):
 
         word = find_leaf(tree, desc)
 
-        dict_of_words[np.str(word)].append(1)
+        if np.str(word) in dict_of_words.keys():
+
+            dict_of_words[np.str(word)].append(1)
+
+        else:
+
+            dict_of_words[np.str(word)] = []
+
+    print("DONE WITH")
 
     return dict_of_words
 
 
 def build_inverted_index(descriptors, vocab_tree, file_dictionary):
+
+    print('BUILDING INVERTED INDEX FILE')
 
     invert_table = {}
 
@@ -169,21 +183,26 @@ def build_inverted_index(descriptors, vocab_tree, file_dictionary):
             word = find_leaf(vocab_tree, desc)
 
             if np.str(word) in invert_table.keys():
+
                 invert_table[np.str(word)].append(file_name)
 
             else:
 
                 invert_table[np.str(word)] = []
 
+    print('DONE BUILDING INVERTED INDEX FILE')
     return invert_table
 
 
-def dict_print(dict):
+def dict_print(dict, unique=False):
 
     for item in dict.keys():
-        print(dict[item])
+        if unique:
+            print(np.unique(dict[item]))
+        else:
+            print(dict[item])
 
-
+'''
 def get_the_dictionary_of_words(dict):
 
     for item in dict.keys():
@@ -191,27 +210,41 @@ def get_the_dictionary_of_words(dict):
         dict[item] = []
 
     return dict
+'''
 
-directory = 'data/DVDCovers'
-branch = 9
-max_depth = 3
+def get_list_of_possible_images(inv, words):
+
+    possible_images = []
+
+    words_of_query_image = words.keys()
+
+    for word in words_of_query_image:
+
+        for file_name in inv[word]:
+
+            if file_name not in possible_images:
+
+                possible_images.append(file_name)
+
+    return possible_images
+
+directory = 'data/DVDCovers/'
+branch = 2
+max_depth = 6
+
 D, file_dic = get_all_features(directory)  # is the set of all descriptors
 
 tree, _ = vocab_tree(D, directory, branch, max_depth)
 
 test_image = cv2.imread('data/test/image_01.jpeg')[:, :, ::-1]
 
-'''
-counter = 0
-for item in query_image_matched.keys():
-    counter = counter +1
-    print(query_image_matched[item])
-print(counter)
-'''
 inv = build_inverted_index(D, tree, file_dic)
 
-words = get_the_dictionary_of_words(inv)
+query_image_matched = match_descriptor_query(test_image, tree)
 
-query_image_matched = match_descriptor_query(test_image, tree, words)
+pos_im = get_list_of_possible_images(inv, query_image_matched)
 
-dict_print(query_image_matched)
+print(dict_print(inv, unique=True))
+
+
+print(len(pos_im))

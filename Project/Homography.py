@@ -157,9 +157,11 @@ def transform_image(img1, img2, H):
     p2 = match_point_homography(0.0, img1x, H)
     p3 = match_point_homography(img1y, 0.0, H)
     p4 = match_point_homography(img1y, img1x, H)
+
     plt.imshow(img2)
     plot_rect(p1, p2, p3, p4, 'r')
-    plt.show()
+    #plt.show()
+
 
 
 def RANSAC(matches):
@@ -197,14 +199,20 @@ def RANSAC(matches):
     return best_H, best_inliers
 
 
-matches, points1, points2 = matching(cover, test)
+def get_matrix_H(img1, img2):
 
-h, _ = cv2.findHomography(points1, points2, cv2.RANSAC)
+    matches, points1, points2 = matching(img1, img2)
 
-myH, number_of_inliers = RANSAC(matches)
+    #h, _ = cv2.findHomography(points1, points2, cv2.RANSAC)
 
-transform_image(cover, test, myH)
-transform_image(cover, test, h)
+    myH, number_of_inliers = RANSAC(matches)
+
+    #p1, p2, p3, p4 = transform_image(cover, test, myH, False)
+
+    return myH, number_of_inliers
+
+
+    #transform_image(cover, test, h, False)
 
 
 
